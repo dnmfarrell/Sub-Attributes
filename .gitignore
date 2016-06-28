@@ -1,0 +1,6 @@
+*.old
+*.swp
+*.swo
+Makefile
+MYMETA*
+*.tar.gz
