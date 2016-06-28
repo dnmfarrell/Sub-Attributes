@@ -9,7 +9,7 @@ no warnings qw(reserved redefine);
 use B 'svref_2object';
 use Carp 'croak';
 
-BEGIN { our $VERSION = 0.01 }
+BEGIN { our $VERSION = 0.02 }
 
 # these data structures are key to this module. They're created in a BEGIN block
 # as package variables so they're available when MODIFY_CODE_ATTRIBUTES is
@@ -56,7 +56,7 @@ BEGIN {
       my ($class, $value, $coderef) = @_;
 
       # full name of the sub to override
-      my $fq_sub = "$class::$value";
+      my $fq_sub = "$class:\:$value";
 
       my $target_coderef = \&{$fq_sub};
       *{$fq_sub} = sub {
@@ -73,7 +73,7 @@ BEGIN {
       my ($class, $value, $coderef) = @_;
 
       # full name of the sub to override
-      my $fq_sub = "$class::$value";
+      my $fq_sub = "$class:\:$value";
 
       my $target_coderef = \&{$fq_sub};
       *{$fq_sub} = sub {
@@ -90,7 +90,7 @@ BEGIN {
       my ($class, $value, $coderef) = @_;
 
       # full name of the sub to override
-      my $fq_sub = "$class::$value";
+      my $fq_sub = "$class:\:\$value";
 
       my $target_coderef = \&{$fq_sub};
       *{$fq_sub} = sub {
@@ -126,7 +126,7 @@ sub MODIFY_CODE_ATTRIBUTES {
     # override subroutine with attribute coderef
     my $old_coderef = $coderef;
     $coderef = sub { $override_coderef->($old_coderef, @_) };
-    *{"$class::$subroutine"} = $coderef;
+    *{"$class:\:$subroutine"} = $coderef;
   }
 
   $Sub::Attributes::attributes{$class}{ $subroutine } = \@attributes;
@@ -220,4 +220,3 @@ See LICENSE
 L<https://github.com/dnmfarrell/Sub-Attributes>
 
 =cut
-
