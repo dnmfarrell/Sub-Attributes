@@ -9,7 +9,7 @@ no warnings qw(reserved redefine);
 use B 'svref_2object';
 use Carp 'croak';
 
-BEGIN { our $VERSION = 0.02 }
+BEGIN { our $VERSION = 0.03 }
 
 # these data structures are key to this module. They're created in a BEGIN block
 # as package variables so they're available when MODIFY_CODE_ATTRIBUTES is
