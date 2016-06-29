@@ -9,7 +9,7 @@ no warnings qw(reserved redefine);
 use B 'svref_2object';
 use Carp 'croak';
 
-BEGIN { our $VERSION = 0.03 }
+BEGIN { our $VERSION = 0.04 }
 
 # these data structures are key to this module. They're created in a BEGIN block
 # as package variables so they're available when MODIFY_CODE_ATTRIBUTES is
@@ -21,19 +21,18 @@ BEGIN { our $VERSION = 0.03 }
 #
 # You can relace/extend %allowed in an inherited class to provide your own behavior!
 BEGIN {
-  our %attributes = ();
   our %allowed = (
-    # runtime check that caller is the class
+    # runtime check that caller is the package
     Private => sub {
-      my ($class) = @_;
+      my ($package) = @_;
       return sub {
         my ($coderef, @args) = @_;
-        my ($package, $filename, $line, $sub) = caller(2);
-        croak 'Only the object may call this sub' unless $sub && $sub =~ /^$class\:\:/;
+        my ($package_caller, $filename, $line, $sub) = caller(2);
+        croak 'Only the object may call this sub' unless $sub && $sub =~ /^$package\:\:/;
         $coderef->(@args);
       };
     },
-    # runtime check that the first arg is the class
+    # runtime check that the first arg is the package
     ClassMethod => sub {
       return sub {
         my ($coderef, @args) = @_;
@@ -53,10 +52,10 @@ BEGIN {
     },
     # compile time override, run a coderef before running the subroutine
     Before => sub {
-      my ($class, $value, $coderef) = @_;
+      my ($package, $value, $coderef) = @_;
 
       # full name of the sub to override
-      my $fq_sub = "$class:\:$value";
+      my $fq_sub = "$package:\:$value";
 
       my $target_coderef = \&{$fq_sub};
       *{$fq_sub} = sub {
@@ -70,15 +69,16 @@ BEGIN {
     },
     # compile time override, run a coderef after running the subroutine
     After => sub {
-      my ($class, $value, $coderef) = @_;
+      my ($package, $value, $coderef) = @_;
 
       # full name of the sub to override
-      my $fq_sub = "$class:\:$value";
+      my $fq_sub = "$package:\:$value";
 
       my $target_coderef = \&{$fq_sub};
       *{$fq_sub} = sub {
         my @rv = $target_coderef->(@_);
-        return $coderef->(@_);
+        $coderef->(@_);
+        return wantarray ? @rv : $rv[0];
       };
 
       # we didn't change the method with the attribute
@@ -87,10 +87,10 @@ BEGIN {
     },
     # compile time override, run a coderef around running the subroutine
     Around => sub {
-      my ($class, $value, $coderef) = @_;
+      my ($package, $value, $coderef) = @_;
 
       # full name of the sub to override
-      my $fq_sub = "$class:\:\$value";
+      my $fq_sub = "$package:\:\$value";
 
       my $target_coderef = \&{$fq_sub};
       *{$fq_sub} = sub {
@@ -106,7 +106,7 @@ BEGIN {
 
 # this is the registrar for subroutine attributes called at compile time
 sub MODIFY_CODE_ATTRIBUTES {
-  my ($class, $coderef, @attributes, @disallowed) = @_;
+  my ($package, $coderef, @attributes, @disallowed) = @_;
 
   my $obj = svref_2object($coderef);
   my $subroutine = $obj->GV->NAME;
@@ -120,29 +120,23 @@ sub MODIFY_CODE_ATTRIBUTES {
     push(@disallowed, $name) && next unless $overrider;
 
     # make compile time changes, skip ahead if no runtime changes
-    my $override_coderef = $overrider->($class, $value, $coderef);
+    my $override_coderef = $overrider->($package, $value, $coderef);
     next unless $override_coderef;
 
     # override subroutine with attribute coderef
     my $old_coderef = $coderef;
     $coderef = sub { $override_coderef->($old_coderef, @_) };
-    *{"$class:\:$subroutine"} = $coderef;
+    *{"$package:\:$subroutine"} = $coderef;
   }
 
-  $Sub::Attributes::attributes{$class}{ $subroutine } = \@attributes;
+  $Sub::Attributes::attributes{$package}{ $subroutine } = \@attributes;
   return @disallowed;
 };
 
-# this is to support attributes::get from attributes.pm
-sub FETCH_CODE_ATTRIBUTES {
-  my ($class, $coderef) = @_;
-  my $cv = svref_2object($coderef);
-  return @{$Sub::Attributes::attributes{$class}{ $cv->GV->NAME }};
-}
-
 sub sub_attributes {
-  my ($class) = @_;
-  return $Sub::Attributes::attributes{ ref $class };
+  my ($package) = @_;
+  my $package_name = ref $package || $package;
+  return $Sub::Attributes::attributes{ $package_name };
 }
 1;
 __END__
