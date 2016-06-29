@@ -219,4 +219,8 @@ See LICENSE
 
 L<https://github.com/dnmfarrell/Sub-Attributes>
 
+=head2 BUGTRACKER
+
+L<https://github.com/dnmfarrell/Sub-Attributes/issues>
+
 =cut
