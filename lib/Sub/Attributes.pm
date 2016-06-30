@@ -90,7 +90,7 @@ BEGIN {
       my ($package, $value, $coderef) = @_;
 
       # full name of the sub to override
-      my $fq_sub = "$package:\:\$value";
+      my $fq_sub = "$package:\:$value";
 
       my $target_coderef = \&{$fq_sub};
       *{$fq_sub} = sub {
